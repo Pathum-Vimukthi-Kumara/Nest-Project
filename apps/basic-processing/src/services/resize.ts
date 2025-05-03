@@ -27,7 +27,7 @@ export class ResizeService {
       const inputImage = await fs.promises.readFile(imagePath);
       const { data: inputBuffer, info: inputInfo } = await sharp(inputImage).raw().toBuffer({ resolveWithObject: true });
 
-      const resizedBuffer = this.bilinearInterpolation(inputBuffer, inputInfo.height,  inputInfo.width, height, width);
+      const resizedBuffer = this.bilinearInterpolation(inputBuffer, inputInfo.width, inputInfo.height, width, height);
 
       // Save the resized image
       await sharp(resizedBuffer, {
@@ -61,8 +61,34 @@ export class ResizeService {
     outputWidth: number,
     outputHeight: number
   ): Buffer {
-    const outputBuffer = Buffer.alloc(outputWidth * outputHeight * 3);
-
+    const channels = 3;
+    const outputBuffer = Buffer.alloc(outputWidth * outputHeight * channels);
+    for (let y = 0; y < outputHeight; y++) {
+      const srcY = y * (inputHeight / outputHeight);
+      const y0 = Math.floor(srcY);
+      const y1 = Math.min(y0 + 1, inputHeight - 1);
+      const yLerp = srcY - y0;
+      for (let x = 0; x < outputWidth; x++) {
+        const srcX = x * (inputWidth / outputWidth);
+        const x0 = Math.floor(srcX);
+        const x1 = Math.min(x0 + 1, inputWidth - 1);
+        const xLerp = srcX - x0;
+        for (let c = 0; c < channels; c++) {
+          const i00 = (y0 * inputWidth + x0) * channels + c;
+          const i01 = (y0 * inputWidth + x1) * channels + c;
+          const i10 = (y1 * inputWidth + x0) * channels + c;
+          const i11 = (y1 * inputWidth + x1) * channels + c;
+          const v00 = inputBuffer[i00];
+          const v01 = inputBuffer[i01];
+          const v10 = inputBuffer[i10];
+          const v11 = inputBuffer[i11];
+          const v0 = v00 * (1 - xLerp) + v01 * xLerp;
+          const v1 = v10 * (1 - xLerp) + v11 * xLerp;
+          const value = v0 * (1 - yLerp) + v1 * yLerp;
+          outputBuffer[(y * outputWidth + x) * channels + c] = Math.round(value);
+        }
+      }
+    }
     return outputBuffer;
   }
 }

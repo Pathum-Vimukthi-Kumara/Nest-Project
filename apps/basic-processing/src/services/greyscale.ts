@@ -23,14 +23,14 @@ export class GreyscaleService {
         fs.mkdirSync(outputDir, { recursive: true });
       }
 
-      const outputFilename = filename.endsWith('.png') ? `${filename}.jpg` : filename;
+      const outputFilename = filename;
       const outputPath = path.join(outputDir, outputFilename);
 
       await sharp(result.buffer, {
         raw: {
-          width: result.height,
-          height: result.width,
-          channels: 3
+          width: result.width,
+          height: result.height,
+          channels: 1
         }
       })
         .png()
