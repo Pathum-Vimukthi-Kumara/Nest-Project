@@ -25,18 +25,24 @@ export class SharpenService {
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         for (let c = 0; c < channels; c++) {
-          let sum = 0;
-          for (let ky = -offset; ky <= offset; ky++) {
-            for (let kx = -offset; kx <= offset; kx++) {
-              const px = Math.min(Math.max(x + kx, 0), width - 1);
-              const py = Math.min(Math.max(y + ky, 0), height - 1);
-              const weight = this.strongKernel[ky + offset][kx + offset];
-              const sourceIndex = (py * width + px) * channels + c;
-              sum += imageData[sourceIndex] * weight;
+          if (c < 3) { // Only apply kernel to RGB
+            let sum = 0;
+            for (let ky = -offset; ky <= offset; ky++) {
+              for (let kx = -offset; kx <= offset; kx++) {
+                const px = Math.min(Math.max(x + kx, 0), width - 1);
+                const py = Math.min(Math.max(y + ky, 0), height - 1);
+                const weight = this.strongKernel[ky + offset][kx + offset];
+                const sourceIndex = (py * width + px) * channels + c;
+                sum += imageData[sourceIndex] * weight;
+              }
             }
+            const pixelIndex = (y * width + x) * channels + c;
+            result[pixelIndex] = Math.min(255, Math.max(0, Math.round(sum)));
+          } else {
+            // Copy alpha channel unchanged
+            const pixelIndex = (y * width + x) * channels + c;
+            result[pixelIndex] = imageData[pixelIndex];
           }
-          const pixelIndex = (y * width + x) * channels + c;
-          result[pixelIndex] = Math.min(255, Math.max(0, Math.round(sum)));
         }
       }
     }

@@ -24,8 +24,15 @@ export class NegativeService {
       const { width, height, channels = 3 } = metadata;
       const rawData = await image.raw().toBuffer();
       const negativeBuffer = Buffer.alloc(rawData.length);
-      for (let i = 0; i < rawData.length; i++) {
-        negativeBuffer[i] = 255 - rawData[i];
+      for (let i = 0; i < width! * height!; i++) {
+        for (let c = 0; c < channels; c++) {
+          // Invert only RGB, leave alpha unchanged if present
+          if (c < 3) {
+            negativeBuffer[i * channels + c] = 255 - rawData[i * channels + c];
+          } else {
+            negativeBuffer[i * channels + c] = rawData[i * channels + c];
+          }
+        }
       }
       await sharp(negativeBuffer, {
         raw: {

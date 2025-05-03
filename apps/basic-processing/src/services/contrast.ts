@@ -9,16 +9,19 @@ import * as path from 'path';
 export class ContrastService {
   private applyContrast(imageData: Buffer, width: number, height: number, channels: number, contrast: number): Buffer {
     const result = Buffer.alloc(imageData.length);
-
-    const factor = contrast + 1;
-
+    // contrast: 1.0 = no change, >1 = more contrast, <1 = less contrast
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         for (let c = 0; c < channels; c++) {
           const pixelIndex = (y * width + x) * channels + c;
-          const pixel = imageData[pixelIndex];
-          const newValue = factor * (pixel - 128) + 128;
-          result[pixelIndex] = Math.max(0, Math.min(255, Math.round(newValue)));
+          // Only apply to RGB, leave alpha unchanged
+          if (c < 3) {
+            const pixel = imageData[pixelIndex];
+            const newValue = (pixel - 128) * contrast + 128;
+            result[pixelIndex] = Math.max(0, Math.min(255, Math.round(newValue)));
+          } else {
+            result[pixelIndex] = imageData[pixelIndex];
+          }
         }
       }
     }
@@ -44,12 +47,14 @@ export class ContrastService {
 
       const image = sharp(imagePath);
       const metadata = await image.metadata();
-      const { width, height } = metadata;
-      const channels = 3;
+      const { width, height, channels = 3 } = metadata;
 
       const rawData = await image.raw().toBuffer();
 
-      const contrastedBuffer = this.applyContrast(rawData, width!, height!, channels, contrast * 12);
+      // Map input contrast (e.g., 0-100) to a float (e.g., 1.0 = no change)
+      const contrastFactor = 1 + (contrast / 100);
+
+      const contrastedBuffer = this.applyContrast(rawData, width!, height!, channels, contrastFactor);
 
       // Save the contrasted image
       await sharp(contrastedBuffer, {

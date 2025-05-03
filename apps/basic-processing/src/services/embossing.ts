@@ -6,10 +6,13 @@ import * as path from 'path';
 
 @Injectable()
 export class EmbossService {
-  private readonly customKernel = [
-    [-2, -1, 0],
-    [-1, 1, 1],
-    [0, 1, 2]
+  // 5x5 kernel for deeper emboss effect
+  private readonly embossKernel5x5 = [
+    [-1, -1, -1, -1, 0],
+    [-1, -1, -1, 0, 1],
+    [-1, -1, 0, 1, 1],
+    [-1, 0, 1, 1, 1],
+    [0, 1, 1, 1, 1],
   ];
 
   private applyKernel(
@@ -19,28 +22,32 @@ export class EmbossService {
     channels: number
   ): Buffer {
     const result = Buffer.alloc(imageData.length);
-    const size = 3;
+    const size = 5;
     const offset = Math.floor(size / 2);
-
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         for (let c = 0; c < channels; c++) {
-          let sum = 0;
-          for (let ky = 0; ky < size; ky++) {
-            for (let kx = 0; kx < size; kx++) {
-              const px = Math.min(Math.max(x + kx - offset, 0), width - 1);
-              const py = Math.min(Math.max(y + ky - offset, 0), height - 1);
-              const weight = this.customKernel[ky][kx];
-              const sourceIndex = (py * width + px) * channels + c;
-              sum += imageData[sourceIndex] * weight;
+          if (c < 3) { // Only apply to RGB
+            let sum = 0;
+            for (let ky = 0; ky < size; ky++) {
+              for (let kx = 0; kx < size; kx++) {
+                const px = Math.min(Math.max(x + kx - offset, 0), width - 1);
+                const py = Math.min(Math.max(y + ky - offset, 0), height - 1);
+                const weight = this.embossKernel5x5[ky][kx];
+                const sourceIndex = (py * width + px) * channels + c;
+                sum += imageData[sourceIndex] * weight;
+              }
             }
+            const index = (y * width + x) * channels + c;
+            result[index] = Math.min(255, Math.max(0, Math.round(sum + 128)));
+          } else {
+            // Copy alpha channel unchanged
+            const index = (y * width + x) * channels + c;
+            result[index] = imageData[index];
           }
-          const index = (y * width + x) * channels + c;
-          result[index] = Math.min(255, Math.max(0, Math.round(sum + 128)));
         }
       }
     }
-
     return result;
   }
 

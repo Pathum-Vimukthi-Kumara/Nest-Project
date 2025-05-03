@@ -19,3 +19,4 @@ export async function convertToGreyscale(imagePath: string): Promise<{ buffer: B
     height
   };
 }
+// If the image has an alpha channel, it is ignored for greyscale conversion.
